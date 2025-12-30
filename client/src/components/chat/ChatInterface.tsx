@@ -30,6 +30,7 @@ interface Chat {
 interface ChatInterfaceProps {
   chat?: Chat;
   projectId?: string;
+  //chatId: string;
   onSendMessage: (content: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;

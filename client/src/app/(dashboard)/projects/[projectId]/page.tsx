@@ -1,10 +1,9 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { ConversationsList } from "@/components/projects/ConversationsList";
 import { KnowledgeBaseSidebar } from "@/components/projects/KnowledgeBaseSidebar";
 import { FileDetailsModal } from "@/components/projects/FileDetailsModal";
-import { useEffect } from "react";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@clerk/nextjs";
 import toast from "react-hot-toast";
@@ -31,7 +30,7 @@ function ProjectPage({ params }: ProjectPageProps) {
   const { getToken, userId } = useAuth();
   const router = useRouter();
 
-  // Data State
+  // --- 1. DATA STATE (REAL LOGIC) ---
   const [data, setData] = useState<ProjectData>({
     project: null,
     chats: [],
@@ -43,79 +42,17 @@ function ProjectPage({ params }: ProjectPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
 
-  // UI states
-
+  // --- 2. UI STATES ---
   const [activeTab, setActiveTab] = useState<"documents" | "settings">(
     "documents"
   );
-
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
     null
   );
-  // Mock data for static UI
-  //Mock data for static UI
-  const mockProject = {
-    id: projectId,
-    name: "Research Analysis Project",
-    description: "AI and machine learning research papers",
-    created_at: new Date().toISOString(),
-    clerk_id: "user_123",
-  };
 
-  const mockChats = [
-    {
-      id: "chat_1",
-      project_id: projectId,
-      title: "Chat #1234",
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      clerk_id: "user_123",
-    },
-    {
-      id: "chat_2",
-      project_id: projectId,
-      title: "Chat #5678",
-      created_at: new Date(Date.now() - 172800000).toISOString(),
-      clerk_id: "user_123",
-    },
-  ];
 
-  const mockDocuments = [
-    {
-      id: "doc_1",
-      project_id: projectId,
-      filename: "research_paper.pdf",
-      s3_key: "projects/123/documents/research_paper.pdf",
-      file_size: 2457600,
-      file_type: "application/pdf",
-      processing_status: "completed",
-      clerk_id: "user_123",
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      source_type: "file",
-      processing_details: {},
-    },
-  ];
 
-  const mockSettings = {
-    id: "settings_1",
-    project_id: projectId,
-    embedding_model: "text-embedding-3-large",
-    rag_strategy: "basic",
-    agent_type: "agentic",
-    chunks_per_search: 10,
-    final_context_size: 5,
-    similarity_threshold: 0.3,
-    number_of_queries: 5,
-    reranking_enabled: true,
-    reranking_model: "rerank-english-v3.0",
-    vector_weight: 0.7,
-    keyword_weight: 0.3,
-    created_at: new Date().toISOString(),
-  };
-  // enD of mock data
-  /*
-    ! Business Logic Functions - Core operations for this project:
-    * - loadProjectData: Load all project data from the server
-  */
+  // --- 4. REAL BUSINESS LOGIC load all the data ---
   useEffect(() => {
     const loadAllData = async () => {
       if (!userId) return;
@@ -141,30 +78,18 @@ function ProjectPage({ params }: ProjectPageProps) {
           settings: settingsRes.data,
         });
       } catch (err) {
-        setError("Failed to fetch data");
-        toast.error("Failed to fetch data");
+        console.error("Fetch error", err);
+        // On ne met pas d'erreur bloquante ici pour laisser la Mock UI s'afficher
+        // setError("Failed to fetch data");
       } finally {
         setLoading(false);
       }
     };
 
     loadAllData();
-  }, [userId, projectId]);
+  }, [userId, projectId, getToken]);
 
-  /*
-  ! User Interation functions
-
-  * - handleCreateNewChat: Create a new conversation in this project
-  * - handleDeleteChat: Remove a conversation from the project
-  * - handleChatClick: Navigate to a specific chat
-  * - handleDocumentUpload: Process and add new documents to knowledge base
-  * - handleDocumentDelete: Remove documents from knowledge base
-  * - handleUrlAdd: Add web content to the knowledge base
-  * - handleOpenDocument: Open a specific document
-  * - handleDraftSettings: Update project configuration locally
-  * - handlePublishSettings: Save project settings to the server
-  */
-
+  // --- 5. HANDLERS ---
   const handleCreateNewChat = async () => {
     if (!userId) return;
 
@@ -183,7 +108,6 @@ function ProjectPage({ params }: ProjectPageProps) {
       const savedChat = result.data;
       router.push(`/projects/${projectId}/chats/${savedChat.id}`);
 
-      // Update local state
       setData((prev) => ({
         ...prev,
         chats: [savedChat, ...prev.chats],
@@ -200,18 +124,13 @@ function ProjectPage({ params }: ProjectPageProps) {
 
   const handleDeleteChat = async (chatId: string) => {
     if (!userId) return;
-
     try {
       const token = await getToken();
-
       await apiClient.delete(`/api/chats/${chatId}`, token);
-
-      // Update local state
       setData((prev) => ({
         ...prev,
         chats: prev.chats.filter((chat) => chat.id !== chatId),
       }));
-
       toast.success("Chat deleted successfully");
     } catch (err: unknown) {
       toast.error("Failed to delete chat");
@@ -221,80 +140,67 @@ function ProjectPage({ params }: ProjectPageProps) {
   const handleChatClick = (chatId: string) => {
     router.push(`/projects/${projectId}/chats/${chatId}`);
   };
-    // handle documents functions
+
+  // Placeholder handlers (Logique à implémenter plus tard)
   const handleDocumentUpload = async (files: File[]) => {
     console.log("Upload files", files);
   };
-
   const handleDocumentDelete = async (documentId: string) => {
-    console.log("Document Deleted");
+    console.log("Document Deleted", documentId);
   };
-
   const handleUrlAdd = async (url: string) => {
     console.log("Add URL", url);
   };
-
   const handleOpenDocument = (documentId: string) => {
     console.log("Open document", documentId);
     setSelectedDocumentId(documentId);
   };
-  // handle settings functions
-  const handleDraftSettings = (updates: unknown) => {
+  const handleDraftSettings = (updates: any) => {
     console.log("Update local state with draft settings", updates);
+    setData((prev) => {
+      // If no settings yet, we can't update them
+
+      if (!prev.settings) {
+        console.warn("No settings to update, not loaded yet")
+        return prev;
+      }
+      // Merge updates into existing settings
+      return {
+        ...prev,
+        settings: {
+          ...prev.settings,
+          ...updates,
+        },
+      };
+    });
   };
 
+      
   const handlePublishSettings = async () => {
-    console.log("Make API call to publish settings");
+    //console.log("Make API call to publish settings");
+    if (!userId || !data.settings) {
+        toast.error("Cannot publish settings: User not authenticated or settings not loaded");
+    }
+    try {
+        const token = await getToken();
+        const result = await apiClient.put(
+            `/api/projects/${projectId}/settings`,
+            data.settings,
+            token
+        )
+        setData((prev) => ({
+            ...prev,
+            settings: result.data,
+        }));
+        toast.success("Settings updated successfully!");
+        
+    } catch (err) {
+        toast.error("Failed to update settings");
+        //console.error("Failed to update settings", err);
+    }
+
   };
- 
-  
-  const selectedDocument = selectedDocumentId
-    ? mockDocuments.find((doc) => doc.id == selectedDocumentId)
-    : null;
-  return(
-    <>
-   <div>
-    <div className="flex h-screen bg-[#0d1117] gap-4 p-4">
-    <ConversationsList
-      project={mockProject}
-      conversations={mockChats}
-      error={null}
-      loading={false}
-      onCreateNewChat={handleCreateNewChat}
-      onChatClick={handleChatClick}
-      onDeleteChat={handleDeleteChat}
-    />
-
-    {/* KnowledgeBase Sidebar */}
-   <KnowledgeBaseSidebar
-    activeTab={activeTab}
-    onSetActiveTab={setActiveTab}
-    projectDocuments={mockDocuments}
-    onDocumentUpload={handleDocumentUpload}
-    onDocumentDelete={handleDocumentDelete}
-    onOpenDocument={handleOpenDocument}
-    onUrlAdd={handleUrlAdd}
-    projectSettings={mockSettings}
-    settingsError={null}
-    settingsLoading={false}
-    onUpdateSettings={handleDraftSettings}
-    onApplySettings={handlePublishSettings}
-    />
-   </div>
-  </div>
-  {selectedDocument && (
-    <FileDetailsModal
-      document={selectedDocument}
-      onClose={() => setSelectedDocumentId(null)}
-    />
-  )}
-  </>
- );
-
-
-
-
-
+ // --- 6. RENDERING LOGIC ---
   if (loading) {
     return <LoadingSpinner message="Loading project..." />;
   }
@@ -303,24 +209,23 @@ function ProjectPage({ params }: ProjectPageProps) {
     return <NotFound message="Project not found" />;
   }
 
-{ /* const selectedDocument = selectedDocumentId
+  const selectedDocumentReal = selectedDocumentId
     ? data.documents.find((doc) => doc.id == selectedDocumentId)
-    : null;*/}
+    : null;
 
   return (
     <>
       <div className="flex h-screen bg-[#0d1117] gap-4 p-4">
         <ConversationsList
-          project={mockProject}
-          conversations={mockChats}
-          error={null}
-          loading={false}
+          project={data.project}
+          conversations={data.chats}
+          error={error}
+          loading={loading}
           onCreateNewChat={handleCreateNewChat}
           onChatClick={handleChatClick}
           onDeleteChat={handleDeleteChat}
         />
 
-        {/* KnowledgeBase Sidebar */}
         <KnowledgeBaseSidebar
           activeTab={activeTab}
           onSetActiveTab={setActiveTab}
@@ -336,14 +241,15 @@ function ProjectPage({ params }: ProjectPageProps) {
           onApplySettings={handlePublishSettings}
         />
       </div>
-      {selectedDocument && (
+      {selectedDocumentReal && (
         <FileDetailsModal
-          document={selectedDocument}
+          document={selectedDocumentReal}
           onClose={() => setSelectedDocumentId(null)}
         />
       )}
     </>
   );
+  
 }
 
 export default ProjectPage;
