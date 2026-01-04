@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-
 import { ProjectsGrid } from "@/components/projects/ProjectsGrid";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-
 import toast from "react-hot-toast";
 import { apiClient } from "@/lib/api";
 
+// --- DATA TYPES (The Blueprint) ---
+// This matches the shape of the data your Python Backend sends back.
 interface Project {
   id: string;
   name: string;
@@ -20,36 +20,43 @@ interface Project {
 }
 
 function ProjectsPage() {
-  // * Data States - What data we're tracking
+  // --- STATE (The Short-Term Memory) ---
+  
+  // "The Menu": Holds the list of projects fetched from the kitchen.
   const [projects, setProjects] = useState<Project[]>([]);
+  
+  // "The Spinner": Shows while the waiter is walking to the kitchen.
   const [loading, setLoading] = useState(true);
+  
+  // "The Complaint Box": Holds any errors if the kitchen messes up.
   const [error, setError] = useState(null);
 
-  // * UI States - How the interface looks and behaves
+  // --- UI STATE (Visuals) ---
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // Modal state
+  // --- MODAL STATE (Popups) ---
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Clerk : https://clerk.com/docs/nextjs/reference/hooks/use-auth
+  // --- HOOKS (Tools) ---
+  // getToken: The VIP Pass needed to talk to the Backend.
   const { getToken, userId } = useAuth();
   const router = useRouter();
 
   /*
-  ! Business Logic Functions - Core operations for this page:
-  * - loadProjects: Get all projects from the server
-  * - handleCreateProject: Make a new project with name and description
-  * - handleDeleteProject: Delete a project by its ID
+   --- BUSINESS LOGIC (The Actions) ---
   */
 
+  // ACTION 1: LOAD PROJECTS (Ask the Kitchen what's available)
   const loadProjects = async () => {
     try {
       setLoading(true);
 
       const token = await getToken();
 
+      // [CONNECTION] GET /api/projects
+      // This calls the Python function that queries Supabase.
       const result = await apiClient.get("/api/projects", token);
 
       const { data } = result || {};
@@ -57,12 +64,15 @@ function ProjectsPage() {
       setProjects(data);
     } catch (err) {
       console.error("Error Loading Projects", err);
-      toast.error("Failed to create project");
+      // NOTE: Small copy-paste typo here in your original code
+      // It says "Failed to create" but should be "Failed to load"
+      toast.error("Failed to create project"); 
     } finally {
       setLoading(false);
     }
   };
 
+  // ACTION 2: CREATE PROJECT (Send a new order to the Kitchen)
   const handleCreateProject = async (name: string, description: string) => {
     try {
       setError(null);
@@ -70,6 +80,8 @@ function ProjectsPage() {
 
       const token = await getToken();
 
+      // [CONNECTION] POST /api/projects
+      // Sends the name/desc to Python -> Python saves to Supabase -> Returns the new ID
       const result = await apiClient.post(
         "/api/projects",
         {
@@ -80,6 +92,9 @@ function ProjectsPage() {
       );
 
       const savedProject = result?.data || {};
+      
+      // OPTIMISTIC UPDATE:
+      // We add the new project to the list immediately so the user sees it instantly.
       setProjects((prev) => [savedProject, ...prev]);
 
       setShowCreateModal(false);
@@ -92,13 +107,16 @@ function ProjectsPage() {
     }
   };
 
+  // ACTION 3: DELETE PROJECT (Cancel an order)
   const handleDeleteProject = async (projectId: string) => {
     try {
       setError(null);
       const token = await getToken();
 
+      // [CONNECTION] DELETE /api/projects/{id}
       await apiClient.delete(`/api/projects/${projectId}`, token);
 
+      // Clean up the local list so the item disappears from the screen
       setProjects((prev) => prev.filter((project) => project.id !== projectId));
 
       toast.success("Project deleted successfully!");
@@ -109,11 +127,11 @@ function ProjectsPage() {
   };
 
   /*
-  ! User Interaction Functions:
-  * - handleProjectClick: Go to a specific project page when clicked
-  * - handleOpenModal/handleCloseModal: Show/hide the new project form
+   --- USER INTERACTION (Clicks & Navigation) ---
   */
 
+  // When a user clicks a project card, we drive them to the "Project Details" page.
+  // This is where the file uploading (RAG ingredients) will happen.
   const handleProjectClick = (projectId: string) => {
     router.push(`/projects/${projectId}`);
   };
@@ -126,12 +144,15 @@ function ProjectsPage() {
     setShowCreateModal(false);
   };
 
+  // EFFECT: Run this once when the user logs in.
   useEffect(() => {
     if (userId) {
       loadProjects();
     }
   }, [userId]);
 
+  // FILTER: Client-side search (Fast!)
+  // We filter the list in the browser instead of asking the database every time.
   const filteredProjects = projects.filter(
     (project) =>
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

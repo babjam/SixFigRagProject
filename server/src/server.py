@@ -12,6 +12,8 @@ app = FastAPI(
     version="1.0.0",
 )
 
+
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -20,6 +22,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- ADD THIS LINE BELOW ---
+#app.include_router(projectFilesRoutes) 
+# ---------------------------
+
 
 app.include_router(userRoutes, prefix="/api/user")
 app.include_router(projectRoutes, prefix="/api/projects")

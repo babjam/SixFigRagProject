@@ -84,4 +84,19 @@ export const apiClient = {
 
     return response.json();
   },
+  uploadToS3: async (uploadUrl: string, file: File) => {
+    const response = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": file.type,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`S3 Upload Error: ${response.status}`);
+    }
+
+    return response; // s3 DOES NOT return JSON on PUT
+  }
 };
