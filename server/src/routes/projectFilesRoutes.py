@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import uuid
-
+from tasks import process_document
 # --- Custom Imports (Your Tools) ---
 from src.services.supabase import supabase
 from src.services.clerkAuth import get_current_user_clerk_id
@@ -140,6 +140,8 @@ async def confirm_upload(
         project_result = supabase.table("project_documents").update({
             "processing_status": "queued" 
             }).eq("s3_key", s3_key).eq("clerk_id", clerk_id).eq("project_id", project_id).execute()
+        document = project_result.data[0]
+        document_id = document["id"]
 
         if not project_result.data:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -148,10 +150,16 @@ async def confirm_upload(
         # In the future, we might trigger a background task here immediately.
         # e.g., task_queue.add(process_file, file_id)
 
+        task=process_document.delay(document_id=document_id)
+        #store task_id somewhere if needed for tracking
+        supabase.table("project_documents").update({
+            "task_id": task.id 
+        }).eq("id", document_id).execute()
         return {
             "message": "Upload confirmed and processing started",
             "data": project_result.data[0]
         }
+    
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -191,10 +199,15 @@ async def add_url(
 
         if not url_result.data:
             raise HTTPException(status_code=500, detail="Failed to add URL")
-
+        document = url_result.data[0]
+        document_id = document["id"]
         # [RAG INJECTION POINT]
         # Same here: This 'queued' status is the signal for the scraper to start.
-
+        task=process_document.delay(document_id=document_id)
+        #store task_id somewhere if needed for tracking
+        supabase.table("project_documents").update({
+            "task_id": task.id 
+        }).eq("id", document_id).execute()
         return {
             "message": "URL added successfully",
             "data": url_result.data[0]  
@@ -248,3 +261,36 @@ async def delete_project_file(
             status_code=500,
             detail=f"Error deleting file: {str(e)}",
         )
+    
+
+@router.get("/{project_id}/files/{file_id}/chunks")
+async def get_document_chunks(
+    project_id: str,
+    file_id: str,
+    clerk_id: str = Depends(get_current_user_clerk_id)
+):
+    try:
+        # 1. Security Check: Does this project belong to the user?
+        project_result = supabase.table('projects').select('id').eq('id', project_id).eq('clerk_id', clerk_id).execute()
+        
+        if not project_result.data:
+            raise HTTPException(status_code=404, detail="Project not found or access denied")
+        
+        # 2. Integrity Check: Does this file belong to this project?
+        # Note: 'file_id' here maps to 'document_id' in your table logic, but the UI passes it as the file ID.
+        doc_result = supabase.table('project_documents').select('id').eq('id', file_id).eq('project_id', project_id).execute()
+        
+        if not doc_result.data:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # 3. Fetch Chunks
+        chunks_result = supabase.table('document_chunks').select('*').eq('document_id', file_id).order('chunk_index').execute()
+        
+        return {
+            "message": "Document chunks retrieved successfully",
+            "data": chunks_result.data or []
+        }
+
+    except Exception as e:
+        print(f"ERROR getting chunks: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get document chunks: {str(e)}")

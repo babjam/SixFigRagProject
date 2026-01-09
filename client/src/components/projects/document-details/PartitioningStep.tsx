@@ -1,15 +1,10 @@
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, FileText, Table, Image as ImageIcon, Heading } from "lucide-react";
 import { GenericStep } from "./GenericStep";
 
 interface PartitioningStepProps {
   status: "completed" | "processing" | "failed" | "pending";
-  elementsFound?: {
-    text: number;
-    tables: number;
-    images: number;
-    titles: number;
-    other: number;
-  };
+  // FIX: Allow any string key, not just specific hardcoded ones
+  elementsFound?: Record<string, number>;
 }
 
 export function PartitioningStep({
@@ -26,40 +21,44 @@ export function PartitioningStep({
     );
   }
 
+  // Helper to pick a nice icon based on the category name
+  const getIcon = (key: string) => {
+    const k = key.toLowerCase();
+    if (k.includes("image") || k.includes("figure")) return <ImageIcon className="w-4 h-4 text-purple-400" />;
+    if (k.includes("table")) return <Table className="w-4 h-4 text-green-400" />;
+    if (k.includes("title") || k.includes("header")) return <Heading className="w-4 h-4 text-yellow-400" />;
+    return <FileText className="w-4 h-4 text-blue-400" />;
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-2xl mx-auto text-center">
-        {/* <div className="w-16 h-16 mx-auto mb-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center">
-          <CheckCircle className="w-16 h-16 text-green-400" />
-        </div> */}
         <h3 className="text-xl font-medium text-gray-100 mb-2">Partitioning</h3>
         <p className="text-gray-400 mb-6">
           Processing and extracting text, images, and tables
         </p>
 
         <div className="mb-6 bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-          <h4 className="font-medium text-blue-300 mb-3">
+          <h4 className="font-medium text-blue-300 mb-3 flex items-center justify-center gap-2">
             📊 Elements Discovered
           </h4>
+          
           <div className="grid grid-cols-2 gap-3 text-sm">
             {Object.entries(elementsFound)
-              .filter(([key, value]) => value > 0)
+              .filter(([_, value]) => value > 0) // Hide zero counts
               .map(([key, value]) => (
                 <div
                   key={key}
                   className="flex items-center justify-between bg-[#2a2a2a] rounded px-3 py-2 border border-gray-600"
                 >
-                  <span className="text-gray-300">
-                    {key === "text"
-                      ? " Text sections"
-                      : key === "tables"
-                      ? " Tables"
-                      : key === "images"
-                      ? " Images"
-                      : key === "titles"
-                      ? " Titles/Headers"
-                      : " Other elements"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {/* Icon based on type */}
+                    {getIcon(key)}
+                    {/* FIX: Just display the key directly (e.g. "NarrativeText") */}
+                    <span className="text-gray-300 capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()} 
+                    </span>
+                  </div>
                   <span className="font-medium text-gray-100">{value}</span>
                 </div>
               ))}

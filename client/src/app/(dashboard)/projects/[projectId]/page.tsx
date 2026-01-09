@@ -88,6 +88,47 @@ function ProjectPage({ params }: ProjectPageProps) {
     loadAllData();
   }, [userId, projectId, getToken]);
 
+/*
+ * Short Polling
+ */
+useEffect(() => {
+  // 1. Check if we actually need to poll
+  const hasProcessingDocuments = data.documents.some(
+    (doc) =>
+      doc.processing_status &&
+      !["completed", "failed"].includes(doc.processing_status)
+  );
+
+  // 2. Stop immediately if nothing is processing
+  if (!hasProcessingDocuments) {
+    return;
+  }
+
+  // 3. Define the polling logic
+  const pollInterval = setInterval(async () => {
+    try {
+      const token = await getToken();
+      
+      const documentsRes = await apiClient.get(
+        `/api/projects/${projectId}/files`,
+        token
+      );
+      
+      // ✅ SAFETY CHECK: Ensure component is still on screen before updating state
+      setData((prev) => ({
+        ...prev,
+        documents: documentsRes.data,
+      }));
+      
+    } catch (err) {
+      console.error("Polling error:", err);
+    }
+  }, 2000); // 2 seconds
+
+  // 4. Cleanup
+  return () => clearInterval(pollInterval);
+}, [data.documents, projectId, getToken]);
+
   // --- 4. CHAT HANDLERS (Left Panel Logic) ---
 
   const handleCreateNewChat = async () => {

@@ -311,6 +311,7 @@ export function KnowledgeBaseSidebar({
   const isMultiQuery = projectSettings?.rag_strategy?.includes("multi-query");
   const isHybrid = projectSettings?.rag_strategy?.includes("hybrid");
   const isEmbeddingLocked = projectDocuments.length > 0;
+  const uniqueDocuments = Array.from(new Map(projectDocuments.map(doc => [doc.id, doc])).values());
 
   return (
     <div className="w-80 bg-[#1a1a1a] border border-gray-700 h-full flex flex-col rounded-xl">
@@ -340,7 +341,7 @@ export function KnowledgeBaseSidebar({
             id: "documents",
             icon: FileText,
             label: "Documents",
-            badge: projectDocuments.length,
+            badge: uniqueDocuments.length,
           },
           {
             id: "settings",
@@ -464,11 +465,11 @@ export function KnowledgeBaseSidebar({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-gray-200">Sources</h3>
                 <span className="text-xs text-gray-400 bg-[#252525] px-2 py-1 rounded">
-                  {projectDocuments.length}
+                  {uniqueDocuments.length}
                 </span>
               </div>
 
-              {projectDocuments.length === 0 ? (
+              {uniqueDocuments.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-12 h-12 bg-[#252525] border border-gray-700 rounded-lg mx-auto mb-4 flex items-center justify-center">
                     <FileText size={18} className="text-gray-400" />
@@ -482,7 +483,7 @@ export function KnowledgeBaseSidebar({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {projectDocuments
+                  {uniqueDocuments
                     .sort(
                       (a, b) =>
                         new Date(b.created_at).getTime() -
