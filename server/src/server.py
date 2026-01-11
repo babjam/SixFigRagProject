@@ -31,7 +31,8 @@ app.add_middleware(
 app.include_router(userRoutes, prefix="/api/user")
 app.include_router(projectRoutes, prefix="/api/projects")
 app.include_router(projectFilesRoutes, prefix="/api/projects")
-app.include_router(chatRoutes, prefix="/api/chats")
+app.include_router(chatRoutes)
+
 
 """
 @app.get("/health")
