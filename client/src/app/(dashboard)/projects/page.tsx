@@ -83,7 +83,7 @@ function ProjectsPage() {
       // [CONNECTION] POST /api/projects
       // Sends the name/desc to Python -> Python saves to Supabase -> Returns the new ID
       const result = await apiClient.post(
-        "/api/projects",
+        "/api/projects/",
         {
           name,
           description,
